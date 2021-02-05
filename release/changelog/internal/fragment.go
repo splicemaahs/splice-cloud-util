@@ -176,15 +176,22 @@ func (g *gitPullRequestNumberGetter) GetPullRequestNumberFor(filename string) (u
 }
 
 func (g *gitPullRequestNumberGetter) getCommitMessage(filename string) (string, error) {
-	args := fmt.Sprintf("log --follow --pretty=format:%%s --diff-filter=A --find-renames=90%% %s", filename)
-	line, err := exec.Command("git", strings.Split(args, " ")...).CombinedOutput()
+	// git log --merges --reverse --oneline --ancestry-path 21d101fcec030cb71e6cab091cdcb2181f0b4b8e..origin | grep "Merge pull request";
+	args := fmt.Sprintf("log --follow --pretty=format:%%H --diff-filter=A --find-renames=90%% %s", filename)
+	hash, err := exec.Command("git", strings.Split(args, " ")...).CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("failed to locate git commit for PR discovery: %v", err)
+		return "", fmt.Errorf("failed to locate git commit hash for the filename: %v", err)
+	}
+	prargs := fmt.Sprintf("log --merges --reverse --oneline --ancestry-path %s..origin", hash)
+
+	line, lerr := exec.Command("git", strings.Split(prargs, " ")...).CombinedOutput()
+	if lerr != nil {
+		return "", fmt.Errorf("failed to locate git commit for PR discovery: %v", lerr)
 	}
 	return string(line), nil
 }
 
-var numRegex = regexp.MustCompile(`\(#(\d+)\)$`)
+var numRegex = regexp.MustCompile(`#(\d+) from`)
 
 func (g *gitPullRequestNumberGetter) parsePRNumber(msg string) (uint, error) {
 	matches := numRegex.FindAllStringSubmatch(msg, 1)
