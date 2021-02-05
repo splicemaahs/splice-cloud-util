@@ -2,17 +2,16 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"path/filepath"
 	"strings"
 
 	"github.com/blang/semver/v4"
 	log "github.com/sirupsen/logrus"
 
-	util "github.com/operator-framework/operator-sdk/release/changelog/internal"
+	util "splice-cloud-util/release/changelog/internal"
 )
 
-const repo = "github.com/operator-framework/operator-sdk"
+const repo = "github.com/splicemaahs/splice-cloud-util"
 
 func main() {
 	var (
@@ -65,9 +64,9 @@ func main() {
 		log.Fatalf("failed to update CHANGELOG: %v", err)
 	}
 
-	mg := util.MigrationGuideFromEntries(version, entries)
-	mgFile := filepath.Join(migrationDir, fmt.Sprintf("v%s.md", version))
-	if err := mg.WriteFile(mgFile); err != nil {
-		log.Fatalf("failed to create migration guide: %v", err)
-	}
+	// mg := util.MigrationGuideFromEntries(version, entries)
+	// mgFile := filepath.Join(migrationDir, fmt.Sprintf("v%s.md", version))
+	// if err := mg.WriteFile(mgFile); err != nil {
+	// 	log.Fatalf("failed to create migration guide: %v", err)
+	// }
 }
