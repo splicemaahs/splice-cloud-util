@@ -57,7 +57,7 @@ brews:
     # Default for github is "https://github.com/<repo_owner>/<repo_name>/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
     # Default for gitlab is "https://gitlab.com/<repo_owner>/<repo_name>/uploads/{{ .ArtifactUploadHash }}/{{ .ArtifactName }}"
     # Default for gitea is "https://gitea.com/<repo_owner>/<repo_name>/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
-    url_template: "https://github.com/splicemaahs/splice-cloud-util/releases/download/v{{ .Tag }}/{{ .ArtifactName }}"
+    url_template: "https://github.com/splicemaahs/splice-cloud-util/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
     # Allows you to set a custom download strategy. Note that you'll need
     # to implement the strategy and add it to your tap repository.
     # Example: https://docs.brew.sh/Formula-Cookbook#specifying-the-download-strategy-explicitly
