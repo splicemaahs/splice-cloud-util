@@ -40,8 +40,7 @@ func (p *Gcp) GetEnvironments(env string) (objects.DetailList, error) {
 
 	credDb := fmt.Sprintf("%s/%s", home, ".config/gcloud/credentials.db")
 	if _, err := os.Stat(credDb); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		logrus.Fatal("Cannot find credentials.db file")
 	}
 
 	database, oerr := sql.Open("sqlite3", credDb)
@@ -49,7 +48,10 @@ func (p *Gcp) GetEnvironments(env string) (objects.DetailList, error) {
 		logrus.WithError(oerr).Fatal("Unable to open database")
 	}
 
-	rows, _ := database.Query("SELECT * FROM credentials")
+	rows, dberr := database.Query("SELECT * FROM credentials")
+	if dberr != nil {
+		logrus.WithError(dberr).Fatal("Error reading from credentials table.")
+	}
 	var account string
 	var authJSON string
 	for rows.Next() {
