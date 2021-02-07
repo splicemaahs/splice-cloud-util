@@ -1,4 +1,5 @@
 env:
+  - CGO_ENABLED="1"
   - REPO=github.com/splicemaahs/splice-cloud-util
 
 before:
