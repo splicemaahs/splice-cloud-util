@@ -44,7 +44,11 @@ func (p *Gcp) GetEnvironments(env string) (objects.DetailList, error) {
 		os.Exit(1)
 	}
 
-	database, _ := sql.Open("sqlite3", credDb)
+	database, oerr := sql.Open("sqlite3", credDb)
+	if oerr != nil {
+		logrus.WithError(oerr).Fatal("Unable to open database")
+	}
+
 	rows, _ := database.Query("SELECT * FROM credentials")
 	var account string
 	var authJSON string
