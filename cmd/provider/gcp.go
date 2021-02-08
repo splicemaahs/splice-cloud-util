@@ -58,6 +58,7 @@ func (p *Gcp) GetEnvironments(env string) (objects.DetailList, error) {
 		rows.Scan(&account, &authJSON)
 		break
 	}
+
 	database.Close()
 
 	detail := []objects.Detail{}

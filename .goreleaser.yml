@@ -6,7 +6,7 @@ before:
   hooks:
     - go mod download
 builds:
-  - id: splice-cloud-util
+  - id: linux_build
     ldflags: &build-ldflags
       - -X splice-cloud-util/cmd.semVer=v{{ .Version }}
       - -X splice-cloud-util/cmd.buildDate={{ .CommitDate }}
@@ -14,12 +14,24 @@ builds:
       - -X splice-cloud-util/cmd.gitRef=refs/tags/{{ .Tag }}
     goos:
       - linux
-      - windows
+  - id: darwin_build
+    ldflags: &build-ldflags
+      - -X splice-cloud-util/cmd.semVer=v{{ .Version }}
+      - -X splice-cloud-util/cmd.buildDate={{ .CommitDate }}
+      - -X splice-cloud-util/cmd.gitCommit={{ .Commit }}
+      - -X splice-cloud-util/cmd.gitRef=refs/tags/{{ .Tag }}
+      - -s
+    env:
+      - CGO_ENABLED=1
+      - CC=/home/runner/work/plenti/plenti-osxcross/target/bin/o64-clang
+      - CXX=/home/runner/work/plenti/plenti-osxcross/target/bin/o64-clang++
+    goos:
       - darwin
 archives:
   - id: splice-cloud-util
     builds:
-      - splice-cloud-util
+      - linux_build
+      - darwin_build
     # format: binary
     wrap_in_directory: true
     name_template: "{{ .Binary }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}_{{ .Mips }}{{ end }}"
