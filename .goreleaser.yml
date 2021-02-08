@@ -4,6 +4,8 @@ env:
 
 before:
   hooks:
+    - pwd
+    - ls /home/runner/work/osxcross/target/bin/
     - go mod download
 builds:
   - id: linux_build
