@@ -23,6 +23,11 @@ jobs:
         name: Set RELEASE_TAG env
         run: echo RELEASE_TAG=$(echo ${GITHUB_REF} | rev | cut -d'/' -f 1 | rev ) >> ${GITHUB_ENV}
       -
+        name: OSXCross for CGO Support
+        run: |
+          mkdir ../../osxcross
+          git clone https://github.com/plentico/osxcross-target.git ../../osxcross/target
+      -
         name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
