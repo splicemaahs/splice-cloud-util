@@ -1,6 +1,7 @@
 bin/*
 dist/*
 splice-cloud-util
+**/.DS_Store
 # Binaries for programs and plugins
 *.exe
 *.exe~
