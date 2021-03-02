@@ -2,7 +2,7 @@
 # release notes and/or the migration guide
 entries:
   - description: >
-      Activate the release specific changelog fragment process
+      get dh-repositories command added
 
     # kind is one of:
     # - addition

@@ -32,6 +32,9 @@ var noHeaders bool
 var jenkinsUser string
 var jenkinsURL string
 var jenkinsKey string
+var dockerUser string
+var dockerPass string
+var formatOverridden bool
 
 var vaultClient vault.Client
 
@@ -41,17 +44,54 @@ var rootCmd = &cobra.Command{
 	Args:  cobra.MinimumNArgs(1),
 	Short: `Run various commands against cloud providers`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		// Validate global parameters here, BEFORE we start to waste time
-		// and run any code.
-		switch strings.ToLower(outputFormat) {
-		case "json":
-		case "yaml":
-		case "text":
-		case "table":
-		default:
-			fmt.Println("Valid options for -o are [json|[text|table]|yaml]")
+		if dockerUser != "" {
+			viper.Set("docker_user", dockerUser)
+			verr := viper.WriteConfig()
+			if verr != nil {
+				logrus.WithError(verr).Info("Failed to write config")
+			}
+		} else {
+			du := viper.Get("docker_user")
+			if du != nil {
+				dockerUser = du.(string)
+			}
+		}
+		if dockerPass != "" {
+			viper.Set("docker_pass", dockerPass)
+			verr := viper.WriteConfig()
+			if verr != nil {
+				logrus.WithError(verr).Info("Failed to write config")
+			}
+		} else {
+			dp := viper.Get("docker_pass")
+			if dp != nil {
+				dockerPass = dp.(string)
+			}
+		}
+		if dockerUser == "" || dockerPass == "" {
+			logrus.Info("Please pass in --user and --pass to set your Docker login credentials, these will be saved in the ~/dockerhub-util/config.yaml file")
 			os.Exit(1)
 		}
+		// Validate global parameters here, BEFORE we start to waste time
+		// and run any code.
+		if outputFormat != "" {
+			outputFormat = strings.ToLower(outputFormat)
+			switch outputFormat {
+			case "json":
+			case "gron":
+			case "yaml":
+			case "text":
+			case "table":
+			default:
+				fmt.Println("Valid options for -o are [json|gron|[text|table]|yaml]")
+				os.Exit(1)
+			}
+			formatOverridden = true
+		} else {
+			formatOverridden = false
+			outputFormat = "json"
+		}
+
 		vaultClient = vault.NewVault()
 
 		if os.Args[1] != "init" {
@@ -114,6 +154,9 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Set Verbose Output")
 	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "text", "output types: json, text (default), yaml")
 	rootCmd.PersistentFlags().BoolVar(&noHeaders, "no-headers", false, "Suppress header output in Text output")
+	rootCmd.PersistentFlags().StringVar(&dockerUser, "user", "", "Your docker user name, stored in the config file.")
+	rootCmd.PersistentFlags().StringVar(&dockerPass, "pass", "", "Your docker password, stored in the config file.")
+
 }
 
 func initConfig() {
