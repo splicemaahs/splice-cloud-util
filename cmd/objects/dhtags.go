@@ -186,11 +186,12 @@ func lenReadable(length int, decimals int) (out string) {
 	var remainder int
 
 	// Get whole number, and the remainder for decimals
-	if length > TB {
-		unit = "TB"
-		i = length / TB
-		remainder = length - (i * TB)
-	} else if length > GB {
+	// if length > TB {
+	// unit = "TB"
+	// i = length / TB
+	// remainder = length - (i * TB)
+	// } else if length > GB {
+	if length > GB {
 		unit = "GB"
 		i = length / GB
 		remainder = length - (i * GB)

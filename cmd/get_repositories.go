@@ -82,23 +82,12 @@ func getDockerHubRepositories(org string, updated bool, release bool) (objects.D
 		return objects.DockerHubRepositoriesList{}, err
 	}
 
-	repoList, rerr := getRepositories(org, updated, release, token)
-	if rerr != nil {
-		logrus.WithError(err).Error("Error getting respository list")
-		return objects.DockerHubRepositoriesList{}, err
-	}
-
-	return repoList, nil
-}
-
-func getRepositories(org string, updated bool, release bool, token string) (objects.DockerHubRepositoriesList, error) {
-
 	repositories := objects.DockerHubRepositoriesList{}
 
 	// curl -s -H "Authorization: JWT ${TOKEN}" https://hub.docker.com/v2/repositories/splicemachine/zeppelin/tags/\?page_size\=10000
 	restClient := resty.New()
 
-	apiURI := "https://hub.docker.com/v2/repositories/splicemachine?page_size=100"
+	apiURI := fmt.Sprintf("https://hub.docker.com/v2/repositories/%s?page_size=100", org)
 	for {
 		resp, resperr := restClient.R().
 			SetHeader("Content-Type", "application/json").
@@ -118,7 +107,7 @@ func getRepositories(org string, updated bool, release bool, token string) (obje
 			rl := objects.DockerHubRepository{}
 			rl = r
 			if updated {
-				lastUser, usererr := getRepositoryTags(org, rl.Name, token, 1)
+				lastUser, usererr := getDockerHubRepositoryTags(org, rl.Name, "", 1)
 				if usererr == nil {
 					if len(lastUser.List) > 0 {
 						rl.LastUpdaterUsername = lastUser.List[0].LastUpdaterUsername
@@ -128,7 +117,7 @@ func getRepositories(org string, updated bool, release bool, token string) (obje
 				}
 			}
 			if release {
-				lastMaster, mastererr := getRepositoryTags(org, rl.Name, token, 50)
+				lastMaster, mastererr := getDockerHubRepositoryTags(org, rl.Name, "", 50)
 				if mastererr == nil {
 					for _, t := range lastMaster.List {
 						if strings.HasPrefix(t.Name, "master") {
@@ -167,8 +156,6 @@ func getToken() (string, error) {
 		logrus.WithError(resperr).Error(fmt.Sprintf("Error logging in and getting token: %s", apiURI))
 		return "BAD", resperr
 	}
-	// logrus.Info(fmt.Sprintf("%s", string(resp.Body()[:])))
-	// fmt.Println(fmt.Sprintf("%#v", resp.Result()))
 	token := resp.Result().(*AuthSuccess)
 
 	return token.Token, nil

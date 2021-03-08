@@ -6,8 +6,7 @@ import (
 	"splice-cloud-util/cmd/objects"
 	"strings"
 
-	// "github.com/hashicorp/vault/api"
-
+	"github.com/blang/semver/v4"
 	"github.com/go-resty/resty/v2"
 	"github.com/sirupsen/logrus"
 
@@ -30,51 +29,117 @@ EXAMPLE 2
 	Run: func(cmd *cobra.Command, args []string) {
 		org, _ := cmd.Flags().GetString("org")
 		repo, _ := cmd.Flags().GetString("repo")
+		prefix, _ := cmd.Flags().GetString("prefix")
 		top, _ := cmd.Flags().GetInt("top")
+		next, _ := cmd.Flags().GetBool("next")
 
-		tags, err := getDockerHubRepositoryTags(org, repo, top)
-		if err != nil {
-			logrus.WithError(err).Error("Error getting repositories")
-		}
+		if next {
+			nextSemVer, err := getNextDockerHubRepositoryTag(org, repo, prefix)
+			if err != nil {
+				logrus.WithError(err).Error("Error getting next SemVer")
+			}
+			fmt.Println(nextSemVer)
+		} else {
+			tags, err := getDockerHubRepositoryTags(org, repo, prefix, top)
+			if err != nil {
+				logrus.WithError(err).Error("Error getting tags")
+			}
 
-		if !formatOverridden {
-			outputFormat = "text"
-		}
+			if !formatOverridden {
+				outputFormat = "text"
+			}
 
-		switch strings.ToLower(outputFormat) {
-		case "json":
-			tags.ToJSON()
-		case "gron":
-			tags.ToGRON()
-		case "yaml":
-			tags.ToYAML()
-		case "text", "table":
-			tags.ToTEXT(noHeaders)
+			switch strings.ToLower(outputFormat) {
+			case "json":
+				tags.ToJSON()
+			case "gron":
+				tags.ToGRON()
+			case "yaml":
+				tags.ToYAML()
+			case "text", "table":
+				tags.ToTEXT(noHeaders)
+			}
 		}
 
 	},
 }
 
-func getDockerHubRepositoryTags(org string, repo string, top int) (objects.DockerHubTagInfoList, error) {
+func getNextDockerHubRepositoryTag(org string, repo string, prefix string) (string, error) {
+
+	token, err := getToken()
+	if err != nil {
+		logrus.WithError(err).Error("Error getting token ")
+		return "", err
+	}
+
+	// curl -s -H "Authorization: JWT ${TOKEN}" https://hub.docker.com/v2/repositories/splicemachine/zeppelin/tags/\?page_size\=10000
+	restClient := resty.New()
+
+	// Top should never exceed 100, if you want more than 100 items off the top
+	// then you'll need to re-write to exit the for loop at the proper time
+	pageSize := 100
+	apiURI := fmt.Sprintf("https://hub.docker.com/v2/repositories/%s/%s/tags/?page_size=%d", org, repo, pageSize)
+	maxSemVer, _ := semver.Parse("0.0.0")
+	for {
+		resp, resperr := restClient.R().
+			SetHeader("Content-Type", "application/json").
+			SetHeader("Authorization", fmt.Sprintf("JWT %s", token)).
+			Get(apiURI)
+		if resperr != nil {
+			logrus.WithError(resperr).Error(fmt.Sprintf("Error fetching tags: %s", apiURI))
+			return "", resperr
+		}
+		tag := &objects.DockerHubTagResult{}
+		marsherr := json.Unmarshal(resp.Body(), &tag)
+		if marsherr != nil {
+			logrus.WithError(marsherr).Error("Error decoding json")
+			return "", marsherr
+		}
+		for _, t := range tag.Results {
+			if len(prefix) == 0 || strings.HasPrefix(t.Name, prefix) {
+				var sv semver.Version
+				var err error
+				if len(prefix) > 0 {
+					sv, err = semver.Parse(strings.Replace(t.Name, prefix, "", 1))
+					if err != nil {
+						logrus.Warn(fmt.Sprintf("Error parsing SemVer for %s", t.Name))
+						break
+					}
+				} else {
+					sv, err = semver.Parse(t.Name)
+					if err != nil {
+						logrus.Warn(fmt.Sprintf("Error parsing SemVer for %s", t.Name))
+						break
+					}
+				}
+				if sv.GT(maxSemVer) {
+					maxSemVer = sv
+				}
+
+			}
+		}
+		if tag.Next == "" {
+			break
+		} else {
+			apiURI = tag.Next
+		}
+	}
+
+	maxSemVer.Patch++
+	if len(prefix) > 0 {
+		return fmt.Sprintf("%s%s", prefix, maxSemVer.String()), nil
+	}
+	return maxSemVer.String(), nil
+
+}
+
+func getDockerHubRepositoryTags(org string, repo string, prefix string, top int) (objects.DockerHubTagInfoList, error) {
 
 	token, err := getToken()
 	if err != nil {
 		logrus.WithError(err).Error("Error getting token ")
 		return objects.DockerHubTagInfoList{}, err
 	}
-
-	tagList, _ := getRepositoryTags(org, repo, token, top)
-
-	// tagJSON, jsonerr := json.MarshalIndent(tagList, "", "    ")
-	// if jsonerr != nil {
-	// 	return nil, jsonerr
-	// }
-	// fmt.Println(string(tagJSON[:]))
-
-	return tagList, nil
-}
-
-func getRepositoryTags(org string, repo string, token string, top int) (objects.DockerHubTagInfoList, error) {
 
 	tags := objects.DockerHubTagInfoList{}
 
@@ -84,10 +149,9 @@ func getRepositoryTags(org string, repo string, token string, top int) (objects.
 	// Top should never exceed 100, if you want more than 100 items off the top
 	// then you'll need to re-write to exit the for loop at the proper time
 	pageSize := 100
-	if top > 0 {
-		pageSize = top
-	}
-	apiURI := fmt.Sprintf("https://hub.docker.com/v2/repositories/splicemachine/%s/tags/?page_size=%d", repo, pageSize)
+	apiURI := fmt.Sprintf("https://hub.docker.com/v2/repositories/%s/%s/tags/?page_size=%d", org, repo, pageSize)
+	tagsCollected := 0
+	foundAll := false
 	for {
 		resp, resperr := restClient.R().
 			SetHeader("Content-Type", "application/json").
@@ -104,11 +168,18 @@ func getRepositoryTags(org string, repo string, token string, top int) (objects.
 			return tags, marsherr
 		}
 		for _, t := range tag.Results {
-			tl := objects.DockerHubTagInfo{}
-			tl = t
-			tags.List = append(tags.List, tl)
+			if len(prefix) == 0 || strings.HasPrefix(t.Name, prefix) {
+				tl := objects.DockerHubTagInfo{}
+				tl = t
+				tags.List = append(tags.List, tl)
+				tagsCollected++
+				if top > 0 && tagsCollected == top {
+					foundAll = true
+					break
+				}
+			}
 		}
-		if tag.Next == "" || top > 0 {
+		if tag.Next == "" || foundAll {
 			break
 		} else {
 			apiURI = tag.Next
@@ -124,7 +195,9 @@ func init() {
 
 	getTagsCmd.Flags().String("org", "", "Specify the dockerhub organization")
 	getTagsCmd.Flags().String("repo", "", "Specify the dockerhub repository")
+	getTagsCmd.Flags().String("prefix", "", "Specify the prefix for the tag")
 	getTagsCmd.Flags().Int("top", 0, "Specify the top number of TAGs to return")
+	getTagsCmd.Flags().BoolP("next", "n", false, "Get the next valid SEMVER based on the highest one")
 	getTagsCmd.MarkFlagRequired("org")
 	getTagsCmd.MarkFlagRequired("repo")
 }
