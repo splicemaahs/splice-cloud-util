@@ -31,6 +31,12 @@ EXAMPLE 3
 	#> splice-cloud-util get environment --csp gcp
 
 `,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		// Check our Jenkins Stored Credentials
+		if err := validateJenkins(); err != nil {
+			logrus.Fatal("Unable to access Jenkins, please run 'splice-cloud-util init' to configure Jenkins access")
+		}
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 
 		csp, _ := cmd.Flags().GetString("csp")

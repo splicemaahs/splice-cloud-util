@@ -68,10 +68,6 @@ var rootCmd = &cobra.Command{
 				dockerPass = dp.(string)
 			}
 		}
-		if dockerUser == "" || dockerPass == "" {
-			logrus.Info("Please pass in --user and --pass to set your Docker login credentials, these will be saved in the ~/dockerhub-util/config.yaml file")
-			os.Exit(1)
-		}
 		// Validate global parameters here, BEFORE we start to waste time
 		// and run any code.
 		if outputFormat != "" {
@@ -94,12 +90,6 @@ var rootCmd = &cobra.Command{
 
 		vaultClient = vault.NewVault()
 
-		if os.Args[1] != "init" {
-			// Check our Jenkins Stored Credentials
-			if err := validateJenkins(); err != nil {
-				logrus.Fatal("Unable to access Jenkins, please run 'splice-cloud-util init' to configure Jenkins access")
-			}
-		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	},
