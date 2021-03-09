@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"splice-cloud-util/cmd/objects"
 	"strings"
 
@@ -26,6 +27,12 @@ EXAMPLE 2
 
 	#> splice-cloud-util get dh-tags --org splicemachine --repo sm_k8_splicectlapi --top 5
 `,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		if dockerUser == "" || dockerPass == "" {
+			logrus.Info("Unable to locate Docker login credentials, please run 'splice-cloud-util init' to configure access.")
+			os.Exit(1)
+		}
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		org, _ := cmd.Flags().GetString("org")
 		repo, _ := cmd.Flags().GetString("repo")

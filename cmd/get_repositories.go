@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	// "github.com/hashicorp/vault/api"
@@ -46,6 +47,12 @@ EXAMPLE 2
 
 	#> splice-cloud-util get dh-repositories --org splicemachine --add-release --add-updated
 `,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		if dockerUser == "" || dockerPass == "" {
+			logrus.Info("Unable to locate Docker login credentials, please run 'splice-cloud-util init' to configure access.")
+			os.Exit(1)
+		}
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		org, _ := cmd.Flags().GetString("org")
 		addUpdated, _ := cmd.Flags().GetBool("add-updated")
