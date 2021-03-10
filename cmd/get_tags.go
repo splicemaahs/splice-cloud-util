@@ -37,11 +37,12 @@ EXAMPLE 2
 		org, _ := cmd.Flags().GetString("org")
 		repo, _ := cmd.Flags().GetString("repo")
 		prefix, _ := cmd.Flags().GetString("prefix")
+		returnPrefix, _ := cmd.Flags().GetBool("return-prefix")
 		top, _ := cmd.Flags().GetInt("top")
 		next, _ := cmd.Flags().GetBool("next")
 
 		if next {
-			nextSemVer, err := getNextDockerHubRepositoryTag(org, repo, prefix)
+			nextSemVer, err := getNextDockerHubRepositoryTag(org, repo, prefix, returnPrefix)
 			if err != nil {
 				logrus.WithError(err).Error("Error getting next SemVer")
 			}
@@ -71,7 +72,7 @@ EXAMPLE 2
 	},
 }
 
-func getNextDockerHubRepositoryTag(org string, repo string, prefix string) (string, error) {
+func getNextDockerHubRepositoryTag(org string, repo string, prefix string, returnPrefix bool) (string, error) {
 
 	token, err := getToken()
 	if err != nil {
@@ -133,7 +134,7 @@ func getNextDockerHubRepositoryTag(org string, repo string, prefix string) (stri
 	}
 
 	maxSemVer.Patch++
-	if len(prefix) > 0 {
+	if len(prefix) > 0 && returnPrefix {
 		return fmt.Sprintf("%s%s", prefix, maxSemVer.String()), nil
 	}
 	return maxSemVer.String(), nil
@@ -203,6 +204,7 @@ func init() {
 	getTagsCmd.Flags().String("org", "", "Specify the dockerhub organization")
 	getTagsCmd.Flags().String("repo", "", "Specify the dockerhub repository")
 	getTagsCmd.Flags().String("prefix", "", "Specify the prefix for the tag")
+	getTagsCmd.Flags().BoolP("return-prefix", "r", false, "Return the prefix as part of the SemVer output")
 	getTagsCmd.Flags().Int("top", 0, "Specify the top number of TAGs to return")
 	getTagsCmd.Flags().BoolP("next", "n", false, "Get the next valid SEMVER based on the highest one")
 	getTagsCmd.MarkFlagRequired("org")
